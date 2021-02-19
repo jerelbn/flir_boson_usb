@@ -103,6 +103,7 @@ class BosonCamera : public nodelet::Nodelet
     float frame_rate;
     Encoding video_mode;
     bool zoom_enable;
+    bool enable_16bit_agc;
     SensorTypes sensor_type;
 };
 

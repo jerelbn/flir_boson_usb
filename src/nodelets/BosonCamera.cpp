@@ -51,7 +51,8 @@ void BosonCamera::onInit()
   pnh.param<std::string>("dev", dev_path, "/dev/video0");
   pnh.param<float>("frame_rate", frame_rate, 60.0);
   pnh.param<std::string>("video_mode", video_mode_str, "RAW16");
-  pnh.param<bool>("zoon_enable", zoom_enable, false);
+  pnh.param<bool>("zoom_enable", zoom_enable, false);
+  pnh.param<bool>("enable_16bit_agc", enable_16bit_agc, true);
   pnh.param<std::string>("sensor_type", sensor_type_str, "Boson_640");
   pnh.param<std::string>("camera_info_url", camera_info_url, "");
 
@@ -60,6 +61,7 @@ void BosonCamera::onInit()
   ROS_INFO("flir_boson_usb - Got frame rate: %f.", frame_rate);
   ROS_INFO("flir_boson_usb - Got video mode: %s.", video_mode_str.c_str());
   ROS_INFO("flir_boson_usb - Got zoom enable: %s.", (zoom_enable ? "true" : "false"));
+  ROS_INFO("flir_boson_usb - Got 16 bit AGC enabled: %s.", (enable_16bit_agc ? "true" : "false"));
   ROS_INFO("flir_boson_usb - Got sensor type: %s.", sensor_type_str.c_str());
   ROS_INFO("flir_boson_usb - Got camera_info_url: %s.", camera_info_url.c_str());
 
@@ -353,7 +355,23 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
   {
     // -----------------------------
     // RAW16 DATA
-    agcBasicLinear(thermal16, &thermal16_linear, height, width);
+    if (enable_16bit_agc)
+    {
+      agcBasicLinear(thermal16, &thermal16_linear, height, width);
+    }
+    else
+    {
+      cv_img.image = thermal16;
+      cv_img.header.stamp = ros::Time::now();
+      cv_img.header.frame_id = frame_id;
+      cv_img.encoding = "mono16";
+      pub_image = cv_img.toImageMsg();
+
+      ci->header.stamp = pub_image->header.stamp;
+      image_pub.publish(pub_image, ci);
+      return;
+    }
+    
 
     // Display thermal after 16-bits AGC... will display an image
     if (!zoom_enable)
